@@ -51,8 +51,6 @@ def get_image_type(imgname, imgdata=None):
             # Be extra safe, check the trailing bytes, too.
             if imgdata[last-2:last] == b'\xFF\xD9':
                 imgtype = "jpg"
-    if imgtype == 'jpeg':
-        imgtype = 'jpg'
     return imgtype
 
 

@@ -283,7 +283,7 @@ def DumpAZW6(infile, outdir):
 
     try:
         # make sure it is really an hd container file
-        contdata = file(infile, 'rb').read()
+        contdata = open(infile, 'rb').read()
         palmheader = contdata[0:78]
         ident = palmheader[0x3C:0x3C+8]
         if ident != 'RBINCONT':

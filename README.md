@@ -1,5 +1,7 @@
 # KindleUnpack - The Plugin + ZIP mod
 
+**[🌐 Web版（ブラウザで変換）](https://tadwg.github.io/kindleunpack-calibre-plugin-zip-mod/)** — AZW3をサーバに送信せずブラウザ内で変換できます。
+
 calibre用KindleUnpackプラグインを改造して、AZW3を画像のみのZIPとしても出力できるようにしたものです。
 最新のcalibre（v6以降 / Python 3.13+）に対応しています。
 

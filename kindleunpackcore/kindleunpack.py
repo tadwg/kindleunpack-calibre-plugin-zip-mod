@@ -6,17 +6,15 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import os
 
-# __path__ = ["lib", os.path.dirname(os.path.realpath(__file__)), "kindleunpack"]
+__path__ = ["lib", os.path.dirname(os.path.realpath(__file__)), "kindleunpack"]
 
 import sys
-# import codecs
+import codecs
 import traceback
-import glob
 
 from .compatibility_utils import PY2, binary_type, utf8_str, unicode_str
 from .compatibility_utils import unicode_argv, add_cp65001_codec
 from .compatibility_utils import hexlify
-from .DumpAZW6_v01 import DumpAZW6
 
 add_cp65001_codec()
 
@@ -26,13 +24,11 @@ if PY2:
     range = xrange
     # since will be printing unicode under python 2 need to protect
     # against sys.stdout.encoding being None stupidly forcing forcing ascii encoding
-    '''
     if sys.stdout.encoding is None:
         sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
     else:
         encoding = sys.stdout.encoding
         sys.stdout = codecs.getwriter(encoding)(sys.stdout)
-    '''
 
 # Changelog
 #  0.11 - Version by adamselene
@@ -146,6 +142,9 @@ if PY2:
 #  0.80   converted to work with both python 2.7 and Python 3.3 and later
 #  0.81   various fixes
 #  0.82   Handle calibre-generated mobis that can have skeletons with no fragments
+#  0.83   Fix header item 114 being mistakenly treated as a string instead of a value
+#  0.84   Try to better follow the epub3 fixed layout spec when unpacking fixed layout mobis,
+#         and handle non-xml escaped titles in the ncx
 
 DUMP = False
 """ Set to True to dump all possible information. """
@@ -180,6 +179,9 @@ import struct
 import re
 import zlib
 import getopt
+import glob
+
+from .DumpAZW6_v01 import DumpAZW6
 
 class unpackException(Exception):
     pass
@@ -537,6 +539,7 @@ def processMobi8(mh, metadata, sect, files, rscnames, pagemapproc, k8resc, obfus
         ncxmap['idtag'] = unicode_str(idtag)
         ncx_data[i] = ncxmap
 
+
     # convert the rawML to a set of xhtml files
     print("Building an epub-like structure")
     htmlproc = XHTMLK8Processor(rscnames, k8proc)
@@ -567,7 +570,7 @@ def processMobi8(mh, metadata, sect, files, rscnames, pagemapproc, k8resc, obfus
                 fileinfo.append(["coverpage", 'Text', filename])
                 guidetext += cover.guide_toxml()
                 cover.writeXHTML()
-
+                
     n =  k8proc.getNumberOfParts()
     for i in range(n):
         part = k8proc.getPart(i)
@@ -599,10 +602,10 @@ def processMobi8(mh, metadata, sect, files, rscnames, pagemapproc, k8resc, obfus
         nav = NAVProcessor(files)
         nav.writeNAV(ncx_data, guidetext, metadata)
 
-    # get cover offset
+    # get cover offset for HD image renaming
     cover_offset = None
     if CREATE_COVER_PAGE:
-        cover_offset = int(mh.metadata.get('CoverOffset', ['-1'])[0])
+        cover_offset = int(metadata.get('CoverOffset', ['-1'])[0])
 
     # make an epub-like structure of it all
     print("Creating an epub-like file")
@@ -789,7 +792,10 @@ def process_all_mobi_headers(files, apnxfile, sect, mhlst, K8Boundary, k8only=Fa
 
         cover_offset = None
         if CREATE_COVER_PAGE:
-            cover_offset = int(metadata.get('CoverOffset', ['-1'])[0])
+            try:
+                cover_offset = int(metadata.get('CoverOffset', ['-1'])[0])
+            except Exception:
+                cover_offset = None
 
         for i in range(beg, end):
             data = sect.loadSection(i)
@@ -930,19 +936,18 @@ def unpackBook(infile, outdir, apnxfile=None, epubver='A', use_hd=False, dodump=
         files.makeK8Struct()
 
     #  call DumpAZW6
-    # ASIN = mh.metadata.get('ASIN')
     CDEContentKey = mh.metadata.get('CDEContentKey')
     cdeType = mh.metadata.get('cdeType')
-    resdir = os.path.join(contentdir, '{}_{}'.format(CDEContentKey[0], cdeType[0]))
-    res_files = glob.glob(os.path.join(resdir, '*.res'))
-    if len(res_files):
-        for res_path in res_files:
-            DumpAZW6(res_path, outdir)
-    else:
-        res_files = glob.glob(os.path.join(os.path.dirname(infile), '*.res'))
-        for res_path in res_files:
-            DumpAZW6(res_path, outdir)
-    #
+    if CDEContentKey and cdeType:
+        resdir = os.path.join(contentdir, '{}_{}'.format(CDEContentKey[0], cdeType[0]))
+        res_files = glob.glob(os.path.join(resdir, '*.res'))
+        if len(res_files):
+            for res_path in res_files:
+                DumpAZW6(res_path, outdir)
+        else:
+            res_files = glob.glob(os.path.join(os.path.dirname(infile), '*.res'))
+            for res_path in res_files:
+                DumpAZW6(res_path, outdir)
 
     process_all_mobi_headers(files, apnxfile, sect, mhlst, K8Boundary, False, epubver, use_hd, zipcompresstype)
 
@@ -975,9 +980,9 @@ def main(argv=unicode_argv()):
     global WRITE_RAW_DATA
     global SPLIT_COMBO_MOBIS
 
-    print("KindleUnpack v0.82")
+    print("KindleUnpack v0.83")
     print("   Based on initial mobipocket version Copyright © 2009 Charles M. Hannum <root@ihack.net>")
-    print("   Extensive Extensions and Improvements Copyright © 2009-2014 ")
+    print("   Extensive Extensions and Improvements Copyright © 2009-2020 ")
     print("       by:  P. Durrant, K. Hendricks, S. Siebert, fandrieu, DiapDealer, nickredding, tkeo.")
     print("   This program is free software: you can redistribute it and/or modify")
     print("   it under the terms of the GNU General Public License as published by")

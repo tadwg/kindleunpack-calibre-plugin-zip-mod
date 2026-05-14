@@ -124,7 +124,7 @@ class K8RESCProcessor(object):
                 if skelid is None and len(self.spine_order) == 0:
                     # assume it was removed initial coverpage
                     skelid = 'coverpage'
-                    tattr['linear'] = 'yes'
+                    tattr['linear'] = 'no'
                 self.spine_order.append(skelid)
                 idref = tattr.pop('idref', None)
                 if idref is not None:

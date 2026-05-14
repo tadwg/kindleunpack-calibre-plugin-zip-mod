@@ -8,7 +8,7 @@ from .compatibility_utils import unicode_str
 
 from .unipath import pathof
 import os
-import imghdr
+from . import imghdr
 
 import struct
 # note:  struct pack, unpack, unpack_from all require bytestring format
@@ -35,8 +35,6 @@ MAX_HEIGHT = 4096
 
 def get_image_type(imgname, imgdata=None):
     imgtype = unicode_str(imghdr.what(pathof(imgname), imgdata))
-    if imgtype == 'jpeg':
-        imgtype = 'jpg'
 
     # imghdr only checks for JFIF or Exif JPEG files. Apparently, there are some
     # with only the magic JPEG bytes out there...

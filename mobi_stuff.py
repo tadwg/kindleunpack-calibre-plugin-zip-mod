@@ -8,15 +8,18 @@ __docformat__ = 'restructuredtext en'
 import os
 import struct
 import re
+from io import open
 
 import calibre_plugins.kindleunpack_plugin.config as cfg
 import calibre_plugins.kindleunpack_plugin.kindleunpackcore.kindleunpack as _mu
 from calibre_plugins.kindleunpack_plugin.kindleunpackcore.compatibility_utils import PY2, bstr, unicode_str
 from calibre_plugins.kindleunpack_plugin.kindleunpackcore.mobi_split import mobi_split
-
+from calibre_plugins.kindleunpack_plugin.__init__ import PLUGIN_NAME, PLUGIN_VERSION
+from calibre.gui2 import warning_dialog
 
 if PY2:
     range = xrange
+
 
 class SectionizerLight:
     """ Stolen from Mobi_Unpack and slightly modified. """
@@ -42,6 +45,7 @@ class SectionizerLight:
         before, after = self.sectionoffsets[section:section+2]
         return self.data[before:after]
 
+
 class MobiHeaderLight:
     """ Stolen from Mobi_Unpack and slightly modified. """
     def __init__(self, sect, sectNumber):
@@ -59,12 +63,10 @@ class MobiHeaderLight:
     def isPrintReplica(self):
         return self.mlstart[0:4] == b'%MOP'
 
-    # Standalone KF8 file
     def isKF8(self):
         return self.start != 0 or self.version == 8
 
     def isJointFile(self):
-        # Check for joint MOBI/KF8
         for i in range(len(self.sect.sectionoffsets)-1):
             before, after = self.sect.sectionoffsets[i:i+2]
             if (after - before) == 8:
@@ -79,6 +81,7 @@ def makeFileNames(prefix, infile, outdir, kf8=False):
     if kf8:
         return os.path.join(outdir, prefix+os.path.splitext(os.path.basename(infile))[0] + '.azw3')
     return os.path.join(outdir, prefix+os.path.splitext(os.path.basename(infile))[0] + '.mobi')
+
 
 class mobiProcessor:
     def __init__(self, infile):
@@ -100,12 +103,13 @@ class mobiProcessor:
 
         self.ePubVersion = cfg.plugin_prefs['Epub_Version']
         self.useHDImages = cfg.plugin_prefs['Use_HD_Images']
+        # ZIP mod settings
         self.zipCompressType = cfg.plugin_prefs['Zip_Compress_Type']
         self.kindleContentDir = cfg.plugin_prefs['Kindle_Content_Folder']
 
     def setZipCompressType(self, zipCompressType):
         self.zipCompressType = zipCompressType
-        
+
     def setKindleContentDir(self, kindleContentDir):
         self.kindleContentDir = kindleContentDir
 
@@ -113,7 +117,7 @@ class mobiProcessor:
         _mu.unpackBook(self.infile, outdir)
         files = os.listdir(outdir)
         pdf = ''
-        filefilter = re.compile('\.pdf$', re.IGNORECASE)
+        filefilter = re.compile(r'\.pdf$', re.IGNORECASE)
         files = filter(filefilter.search, files)
         if files:
             for filename in files:
@@ -121,17 +125,19 @@ class mobiProcessor:
                 break
         else:
             raise Exception(_('Problem locating unpacked pdf.'))
-        if pdf=='':
+        if pdf == '':
             raise Exception(_('Problem locating unpacked pdf.'))
         if not os.path.exists(pdf):
             raise Exception(_('Problem locating unpacked pdf: {0}'.format(pdf)))
         return pdf
 
     def unpackMOBI(self, outdir):
-        _mu.unpackBook(self.infile, outdir, epubver=self.ePubVersion, use_hd=self.useHDImages, contentdir=self.kindleContentDir)
+        _mu.unpackBook(self.infile, outdir, epubver=self.ePubVersion, use_hd=self.useHDImages,
+                       contentdir=self.kindleContentDir)
 
     def unpackEPUB(self, outdir):
-        _mu.unpackBook(self.infile, outdir, epubver=self.ePubVersion, use_hd=self.useHDImages, contentdir=self.kindleContentDir, format='EPUB')
+        _mu.unpackBook(self.infile, outdir, epubver=self.ePubVersion, use_hd=self.useHDImages,
+                       contentdir=self.kindleContentDir, format='EPUB')
         kf8dir = os.path.join(outdir, 'mobi8')
         kf8BaseName = os.path.splitext(os.path.basename(self.infile))[0]
         epub = os.path.join(kf8dir, '{0}.epub'.format(kf8BaseName))
@@ -140,17 +146,28 @@ class mobiProcessor:
         return epub
 
     def unpackZIP(self, outdir):
-        _mu.unpackBook(self.infile, outdir, epubver=self.ePubVersion, use_hd=self.useHDImages, contentdir=self.kindleContentDir, format='ZIP', zipcompresstype=self.zipCompressType)
+        _mu.unpackBook(self.infile, outdir, epubver=self.ePubVersion, use_hd=self.useHDImages,
+                       contentdir=self.kindleContentDir, format='ZIP', zipcompresstype=self.zipCompressType)
         kf8dir = os.path.join(outdir, 'mobi8')
         kf8BaseName = os.path.splitext(os.path.basename(self.infile))[0]
-        zip = os.path.join(kf8dir, '{0}.zip'.format(kf8BaseName))
-        if not os.path.exists(zip):
-            raise Exception(_('Problem locating unpacked zip: {0}'.format(zip)))
-        return zip
+        zip_file = os.path.join(kf8dir, '{0}.zip'.format(kf8BaseName))
+        if not os.path.exists(zip_file):
+            raise Exception(_('Problem locating unpacked zip: {0}'.format(zip_file)))
+        return zip_file
 
     def writeSplitCombo(self, outdir):
         mobi_to_split = mobi_split(unicode_str(self.infile))
         outMobi = makeFileNames('MOBI-', self.infile, outdir)
         outKF8 = makeFileNames('KF8-', self.infile, outdir, True)
-        file(outMobi, 'wb').write(mobi_to_split.getResult7())
-        file(outKF8, 'wb').write(mobi_to_split.getResult8())
+        try:
+            open(outMobi, 'wb').write(mobi_to_split.getResult7())
+        except Exception:
+            msg = 'Could not create MOBI portion of the split'
+            warning_dialog(None, _(PLUGIN_NAME + ' v' + PLUGIN_VERSION),
+                _(msg), show=True, show_copy_button=False)
+        try:
+            open(outKF8, 'wb').write(mobi_to_split.getResult8())
+        except Exception:
+            msg = 'Could not create KF8 portion of the split'
+            warning_dialog(None, _(PLUGIN_NAME + ' v' + PLUGIN_VERSION),
+                _(msg), show=True, show_copy_button=False)

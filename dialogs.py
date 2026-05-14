@@ -6,26 +6,24 @@ __license__   = 'GPL v3'
 __docformat__ = 'restructuredtext en'
 
 try:
-    from PyQt5.Qt import (Qt, QProgressDialog, QTimer, QSize, QDialog, QIcon,
-                      QDialogButtonBox, QApplication, QTextBrowser, QVBoxLayout)
+    from qt.core import (Qt, QProgressDialog, QTimer, QSize, QDialog, QIcon,
+                    QDialogButtonBox, QApplication, QTextBrowser, QVBoxLayout)
 except ImportError:
-    from PyQt4.Qt import (Qt, QProgressDialog, QTimer, QSize, QDialog, QIcon,
-                      QDialogButtonBox, QApplication, QTextBrowser, QVBoxLayout)
+    try:
+        from PyQt5.Qt import (Qt, QProgressDialog, QTimer, QSize, QDialog, QIcon,
+                        QDialogButtonBox, QApplication, QTextBrowser, QVBoxLayout)
+    except ImportError:
+        from PyQt4.Qt import (Qt, QProgressDialog, QTimer, QSize, QDialog, QIcon,
+                        QDialogButtonBox, QApplication, QTextBrowser, QVBoxLayout)
 
 from calibre.gui2.dialogs.message_box import MessageBox
 from calibre_plugins.kindleunpack_plugin.__init__ import (PLUGIN_NAME, PLUGIN_VERSION)
-
-# pulls in translation files for _() strings
-try:
-    load_translations()
-except NameError:
-    pass # load_translations() added in calibre 1.9
 
 class ProgressDialog(QProgressDialog):
     '''
     Used to process Multiple selections of AZW3/AZW4 into EPUBs/PDFs.
     '''
-    def __init__(self, gui, books, callback_fn, db, target_format, attr, goal_format, status_msg_type=_('books'), action_type=_('Checking')):
+    def __init__(self, gui, books, callback_fn, db, target_format, attr, goal_format='EPUB', status_msg_type=_('books'), action_type=_('Checking')):
         self.total_count = len(books)
         QProgressDialog.__init__(self, '', _('Cancel'), 0, self.total_count, gui)
         self.setMinimumWidth(500)
@@ -68,13 +66,13 @@ class ProgressDialog(QProgressDialog):
 
         if self.target_format in format_dict.keys():
             format = format_dict[self.target_format].get_format_details()
-            kindle_obj = format['kindle_obj']
 
+            kindle_obj = format['kindle_obj']
             if not kindle_obj.isEncrypted:
                 if getattr(kindle_obj, self.attr):
                     if format['goal_format'] not in all_formats:
                         target_format = self.target_format
-                        if format['goal_format'] == 'ZIP':
+                        if self.goal_format == 'ZIP':
                             target_format = 'ZIP'
                         success, error = self.callback_fn(kindle_obj, book_id, target_format, True)
                         if success:

@@ -55,7 +55,7 @@ def processCRES(i, data, outdir):
 # metavalue key numbers reamin the same in the CONT EXTH
 def dump_contexth(codec, extheader):
     # determine text encoding
-    if extheader == '':
+    if extheader == b'' or extheader == '':
         return
     id_map_strings = {
            1 : 'Drm Server Id (1)',
@@ -140,7 +140,7 @@ def dump_contexth(codec, extheader):
         content = extheader[pos + 8: pos + size]
         if id in id_map_strings.keys():
             name = id_map_strings[id]
-            print('\n    Key: "%s"\n        Value: "%s"' % (name, unicode(content, codec).encode("utf-8")))
+            print('\n    Key: "%s"\n        Value: "%s"' % (name, content.decode(codec, errors='replace')))
         elif id in id_map_values.keys():
             name = id_map_values[id]
             if size == 9:
@@ -156,11 +156,11 @@ def dump_contexth(codec, extheader):
                 print("\nError: Value for %s has unexpected size of %s" % (name, size))
         elif id in id_map_hexstrings.keys():
             name = id_map_hexstrings[id]
-            print('\n    Key: "%s"\n        Value: 0x%s' % (name, content.encode('hex')))
+            print('\n    Key: "%s"\n        Value: 0x%s' % (name, content.hex()))
         else:
             print("\nWarning: Unknown metadata with id %s found" % id)
             name = str(id) + ' (hex)'
-            print('    Key: "%s"\n        Value: 0x%s' % (name, content.encode('hex')))
+            print('    Key: "%s"\n        Value: 0x%s' % (name, content.hex()))
         pos += size
     return
 
@@ -283,10 +283,10 @@ def DumpAZW6(infile, outdir):
 
     try:
         # make sure it is really an hd container file
-        contdata = file(infile, 'rb').read()
+        contdata = open(infile, 'rb').read()
         palmheader = contdata[0:78]
         ident = palmheader[0x3C:0x3C+8]
-        if ident != 'RBINCONT':
+        if ident != b'RBINCONT':
             raise dumpHeaderException('invalid file format')
 
         headers = {}
@@ -301,15 +301,15 @@ def DumpAZW6(infile, outdir):
         # now dump a basic sector map of the palmdb
         n = pp.getnumsections()
         dtmap = {
-            "FONT": "FONT",
-            "RESC": "RESC",
-            "CRES": "CRES",
-            "CONT": "CONT",
-            chr(0xa0) + chr(0xa0) + chr(0xa0) + chr(0xa0): "Empty_Image/Resource_Placeholder",
-            chr(0xe9) + chr(0x8e) + "\r\n" : "EOF_RECORD",
+            b"FONT": "FONT",
+            b"RESC": "RESC",
+            b"CRES": "CRES",
+            b"CONT": "CONT",
+            bytes([0xa0, 0xa0, 0xa0, 0xa0]): "Empty_Image/Resource_Placeholder",
+            bytes([0xe9, 0x8e, 0x0d, 0x0a]): "EOF_RECORD",
             }
         dtmap2 = {
-            "kindle:embed" : "KINDLE:EMBED",
+            b"kindle:embed" : "KINDLE:EMBED",
         }
         tr = -1
         off = -1
@@ -318,7 +318,7 @@ def DumpAZW6(infile, outdir):
         print("\nMap of Palm DB Sections")
         print("    Dec  - Hex : Description")
         print("    ---- - ----  -----------")
-        for i in xrange(n):
+        for i in range(n):
             before, after = pp.getsecaddr(i)
             data = pp.readsection(i)
             dlen = len(data)
@@ -328,20 +328,19 @@ def DumpAZW6(infile, outdir):
             if dtext in dtmap2.keys():
                 desc = data
                 linkhrefs = []
-                hreflist = desc.split('|')
+                hreflist = desc.split(b'|')
                 for href in hreflist:
-                    if href != "":
-                        linkhrefs.append("        " +   href)
+                    if href != b"":
+                        linkhrefs.append("        " + href.decode("utf-8", errors="replace"))
                 desc = "\n" + "\n".join(linkhrefs)
             elif dt in dtmap.keys():
                 desc = dtmap[dt]
-                if dt == "CONT":
+                if dt == b"CONT":
                     desc="Cont Header"
-                elif dt == "CRES":
+                elif dt == b"CRES":
                     processCRES(i, data, outdir)
             else:
-                desc = dtext.encode('hex')
-                desc = desc + " " + dtext
+                desc = dtext.hex() + ' ' + repr(dtext)
             if desc != "CONT":
                 print("    %04d - %04x: %s [%d]" % (i, i, desc, dlen))
 

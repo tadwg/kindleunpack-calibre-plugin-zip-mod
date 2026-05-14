@@ -1,0 +1,83 @@
+name: Build Plugin ZIP
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build plugin ZIP
+        run: |
+          python3 << 'PYEOF'
+          import zipfile, os
+
+          includes = [
+              '__init__.py', 'action.py', 'config.py', 'dialogs.py',
+              'mobi_stuff.py', 'utilities.py',
+              'plugin-import-name-kindleunpack_plugin.txt',
+          ]
+
+          with zipfile.ZipFile('KindleUnpack-ZIP-mod.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+              for fname in includes:
+                  if os.path.exists(fname):
+                      zf.write(fname)
+              for root, dirs, files in os.walk('images'):
+                  for f in files:
+                      zf.write(os.path.join(root, f))
+              for root, dirs, files in os.walk('kindleunpackcore'):
+                  dirs[:] = [d for d in dirs if d not in {'.git', '__pycache__'}]
+                  for f in files:
+                      if f.endswith('.py'):
+                          zf.write(os.path.join(root, f))
+              if os.path.exists('translations'):
+                  for root, dirs, files in os.walk('translations'):
+                      for f in files:
+                          zf.write(os.path.join(root, f))
+
+          size = os.path.getsize('KindleUnpack-ZIP-mod.zip')
+          print(f'Created: KindleUnpack-ZIP-mod.zip ({size} bytes)')
+          PYEOF
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(python3 -c "
+          import ast
+          with open('__init__.py') as f:
+              src = f.read()
+          tree = ast.parse(src)
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Assign):
+                  for t in node.targets:
+                      if isinstance(t, ast.Name) and t.id == 'PLUGIN_VERSION_TUPLE':
+                          v = node.value
+                          print('.'.join(str(e.n) for e in v.elts))
+          ")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Plugin version: $VERSION"
+
+      - name: Create or update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: KindleUnpack ZIP mod v${{ steps.version.outputs.version }}
+          body: |
+            ## KindleUnpack - The Plugin + ZIP mod v${{ steps.version.outputs.version }}
+
+            calibre 9.x / Python 3.14 対応版
+
+            ### インストール方法
+            1. 下の `KindleUnpack-ZIP-mod.zip` をダウンロード
+            2. calibre → 環境設定 → プラグイン → ファイルからプラグインをロード
+            3. ZIPを選択してインストール → calibreを再起動
+          files: KindleUnpack-ZIP-mod.zip
+          make_latest: true

@@ -11,11 +11,18 @@
 calibre用KindleUnpackプラグインを改造して、AZW3を画像のみのZIPとしても出力できるようにしたものです。
 最新のcalibre（v6以降 / Python 3.13+）に対応しています。
 
+### ダウンロード
+
+**[⬇ 最新版をダウンロード（Releases）](https://github.com/tadwg/kindleunpack-calibre-plugin-zip-mod/releases/latest/download/KindleUnpack-ZIP-mod.zip)**
+
+`master` に push されるたびに GitHub Actions が自動でZIPを生成します。
+
 ### インストール方法
 
-1. このリポジトリの「Releases」または「Code」→「Download ZIP」からプラグインのZIPを取得
+1. 上のリンクから `KindleUnpack-ZIP-mod.zip` をダウンロード
 2. calibreを開き、「環境設定」→「プラグイン」→「ファイルからプラグインをロード」
 3. ZIPファイルを選択してインストール
+4. calibreを再起動
 
 ### 使用方法
 
@@ -66,7 +73,7 @@ Pyodide（WebAssemblyベースのCPython）を使い、AZW3の変換処理をす
 - **最新calibreコア対応**: KindleUnpack v0.83.8ベースのコアを使用
 - **Python 3.13/3.14対応**: 標準ライブラリから削除された `imghdr`・`distutils` を代替実装に置き換え
 - **qt.core対応**: calibre 6以降のQt APIインポートに対応
-- **DumpAZW6**: Python 3構文（`print()`、`except X as e:`）に対応
+- **DumpAZW6**: Python 3構文に完全対応（`print()`、`except X as e:`、`bytes`比較、`open()`等）
 - **JPEG拡張子修正**: `get_image_type()` が返す `'jpeg'` を `'jpg'` に統一
 
 ---

@@ -17,6 +17,16 @@ calibre用KindleUnpackプラグインを改造して、AZW3を画像のみのZIP
 
 `master` に push されるたびに GitHub Actions が自動でZIPを生成します。
 
+リポジトリをクローンして手動でビルドすることもできます：
+
+```bash
+git clone https://github.com/tadwg/kindleunpack-calibre-plugin-zip-mod.git
+cd kindleunpack-calibre-plugin-zip-mod
+python3 build.py
+```
+
+`KindleUnpack-ZIP-mod.zip` が生成されます。
+
 ### インストール方法
 
 1. 上のリンクから `KindleUnpack-ZIP-mod.zip` をダウンロード
